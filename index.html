@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Poker Manager Pro</title>
+    <title>Poker Manager Pro V3</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -25,7 +25,6 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             margin: 0;
-            /* Correction hauteur mobile */
             height: 100vh; 
             height: 100dvh; 
             display: flex;
@@ -37,7 +36,7 @@
         .btn {
             border: none;
             border-radius: 12px;
-            padding: 20px 10px; /* Boutons plus hauts pour faciliter le clic */
+            padding: 20px 10px;
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
@@ -73,7 +72,7 @@
         #game-header {
             text-align: center;
             padding-bottom: 5px;
-            flex-shrink: 0; /* Ne pas réduire le header */
+            flex-shrink: 0; 
         }
         .pot-container {
             font-size: 32px; font-weight: bold; color: var(--accent-green);
@@ -83,14 +82,14 @@
 
         /* TABLE VIEW */
         #table-view {
-            flex: 1; /* Prend tout l'espace disponible au milieu */
+            flex: 1;
             position: relative;
             margin: 10px 0;
             background: radial-gradient(circle at center, #263238 0%, #121212 70%);
             border-radius: 16px;
             border: 2px solid #333;
             overflow-y: auto;
-            min-height: 0; /* Important pour flexbox scroll */
+            min-height: 0;
         }
         
         .player-row {
@@ -101,21 +100,21 @@
         }
         .player-row.active-turn { background: rgba(255, 215, 0, 0.15); border-left: 4px solid var(--accent-gold); }
         .player-row.folded { opacity: 0.4; text-decoration: line-through; }
+        .player-row.acted-check { background: rgba(255, 255, 255, 0.05); } /* Indicateur visuel discret */
 
         .p-name { font-weight: bold; font-size: 16px; }
         .p-stack { color: var(--primary); font-family: monospace; font-size: 16px; }
         .p-bet { color: var(--accent-gold); font-size: 14px; }
         .dealer-chip { background: var(--accent-gold); color: black; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: inline-flex; justify-content: center; align-items: center; margin-left: 5px; font-weight: bold;}
 
-        /* CONTROL PANEL (Bas de l'écran - CORRIGÉ) */
+        /* CONTROL PANEL */
         #control-panel {
             background: var(--surface);
             padding: 20px;
-            /* AJOUT IMPORTANT : Espace en bas pour éviter la barre système */
             padding-bottom: max(20px, env(safe-area-inset-bottom) + 15px); 
             border-radius: 20px 20px 0 0;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-            flex-shrink: 0; /* Empêche le panneau de s'écraser */
+            flex-shrink: 0;
             z-index: 10;
         }
 
@@ -222,6 +221,7 @@
     </div>
 
     <script>
+        // --- DONNEES DU JEU ---
         let config = { startStack: 1000, sb: 10, bb: 20 };
         let players = []; 
         let gameState = {
@@ -231,7 +231,8 @@
             currentStage: 0,
             highestBet: 0, 
             stageBets: {},
-            isHandActive: false
+            isHandActive: false,
+            actedPlayers: new Set() // CORRECTIF: Suit qui a parlé dans le tour
         };
 
         function addPlayer() {
@@ -269,6 +270,7 @@
             gameState.pot = 0;
             gameState.currentStage = 0;
             gameState.stageBets = {};
+            gameState.actedPlayers.clear(); // Reset mémoire des actions
             gameState.isHandActive = true;
             
             let sbIdx = getNextActivePlayer(gameState.dealerIdx);
@@ -303,11 +305,21 @@
             return next;
         }
 
+        // --- CŒUR DU PROBLEME REGLE ICI ---
         function checkRoundComplete() {
             const activePlayers = players.filter(p => p.status === 'active');
             const remaining = players.filter(p => p.status !== 'folded' && p.status !== 'out');
+            
+            // Si tout le monde s'est couché sauf 1
             if (remaining.length === 1) { endHandWinner(remaining[0]); return true; }
-            return activePlayers.every(p => (gameState.stageBets[players.indexOf(p)] || 0) === gameState.highestBet);
+
+            // 1. Est-ce que les mises sont égales ?
+            const betsBalanced = activePlayers.every(p => (gameState.stageBets[players.indexOf(p)] || 0) === gameState.highestBet);
+            
+            // 2. Est-ce que tout le monde a parlé ? (C'est ce qui manquait)
+            const allActed = activePlayers.every(p => gameState.actedPlayers.has(players.indexOf(p)));
+
+            return betsBalanced && allActed;
         }
 
         function playerAction(action) {
@@ -316,16 +328,20 @@
             const currentBet = gameState.stageBets[pIdx];
             const toCall = gameState.highestBet - currentBet;
 
-            if (action === 'fold') p.status = 'folded';
-            else if (action === 'check_call') placeBet(pIdx, Math.min(p.stack, toCall));
+            if (action === 'fold') {
+                p.status = 'folded';
+                gameState.actedPlayers.add(pIdx); // Compte comme une action
+            }
+            else if (action === 'check_call') {
+                placeBet(pIdx, Math.min(p.stack, toCall));
+                gameState.actedPlayers.add(pIdx); // J'ai parlé !
+            }
             
-            if (checkRoundComplete() && (gameState.currentStage > 0 || (gameState.currentStage === 0 && gameState.highestBet === config.bb && action === 'check_call' && currentBet + toCall === config.bb))) {
-                 prepareNextStage();
-            } else if (checkRoundComplete() && gameState.highestBet > config.bb) {
+            // Vérification fin de tour
+            if (checkRoundComplete()) {
                  prepareNextStage();
             } else {
-                if (checkRoundComplete()) prepareNextStage();
-                else gameState.activePlayerIdx = getNextActivePlayer(pIdx);
+                gameState.activePlayerIdx = getNextActivePlayer(pIdx);
             }
             updateUI();
         }
@@ -357,6 +373,11 @@
             const added = val - gameState.stageBets[pIdx];
             placeBet(pIdx, added);
             gameState.highestBet = val;
+            
+            // IMPORTANT : Une relance efface les actions des autres (ils doivent reparler)
+            gameState.actedPlayers.clear();
+            gameState.actedPlayers.add(pIdx); // Sauf le relanceur qui vient de parler
+
             cancelRaise();
             gameState.activePlayerIdx = getNextActivePlayer(pIdx);
             updateUI();
@@ -368,6 +389,7 @@
             gameState.currentStage++;
             players.forEach((_, i) => gameState.stageBets[i] = 0);
             gameState.highestBet = 0;
+            gameState.actedPlayers.clear(); // Nouveau tour, personne n'a parlé
             gameState.activePlayerIdx = getNextActivePlayer(gameState.dealerIdx);
             if (gameState.currentStage > 3) showWinnerSelection();
             else updateUI();
