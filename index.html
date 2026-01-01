@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Poker Manager Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
@@ -11,21 +11,23 @@
             --surface: #1e1e1e;
             --surface-light: #2c2c2c;
             --primary: #bb86fc;
-            --accent-green: #00e676; /* Pour Suivre/Check */
-            --accent-red: #ff5252;   /* Pour Se Coucher */
-            --accent-gold: #ffd700;  /* Pour Relancer/Dealer */
+            --accent-green: #00e676;
+            --accent-red: #ff5252;
+            --accent-gold: #ffd700;
             --text-main: #ffffff;
             --text-sec: #b0b0b0;
         }
 
-        * { box-sizing: border-box; user-select: none; }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: 'Roboto', sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
             margin: 0;
-            height: 100vh;
+            /* Correction hauteur mobile */
+            height: 100vh; 
+            height: 100dvh; 
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -35,12 +37,13 @@
         .btn {
             border: none;
             border-radius: 12px;
-            padding: 15px;
-            font-size: 16px;
+            padding: 20px 10px; /* Boutons plus hauts pour faciliter le clic */
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
             display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.3; pointer-events: none; filter: grayscale(1); }
@@ -56,7 +59,7 @@
         }
 
         /* --- SCREENS --- */
-        .screen { display: none; flex-direction: column; height: 100%; padding: 20px; }
+        .screen { display: none; flex-direction: column; height: 100%; padding: 15px; }
         .screen.active { display: flex; }
 
         /* SETUP SCREEN */
@@ -69,24 +72,25 @@
         /* GAME SCREEN LAYOUT */
         #game-header {
             text-align: center;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            flex-shrink: 0; /* Ne pas réduire le header */
         }
         .pot-container {
             font-size: 32px; font-weight: bold; color: var(--accent-green);
-            margin: 10px 0; text-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+            margin: 5px 0; text-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
         }
         .sub-info { font-size: 14px; color: var(--text-sec); display: flex; justify-content: space-between; }
 
-        /* TABLE VIEW (Visualisation des joueurs) */
+        /* TABLE VIEW */
         #table-view {
-            flex: 1;
+            flex: 1; /* Prend tout l'espace disponible au milieu */
             position: relative;
-            margin: 20px 0;
+            margin: 10px 0;
             background: radial-gradient(circle at center, #263238 0%, #121212 70%);
-            border-radius: 20px;
+            border-radius: 16px;
             border: 2px solid #333;
             overflow-y: auto;
+            min-height: 0; /* Important pour flexbox scroll */
         }
         
         .player-row {
@@ -97,19 +101,22 @@
         }
         .player-row.active-turn { background: rgba(255, 215, 0, 0.15); border-left: 4px solid var(--accent-gold); }
         .player-row.folded { opacity: 0.4; text-decoration: line-through; }
-        .player-row.winner { background: rgba(0, 230, 118, 0.2); }
 
         .p-name { font-weight: bold; font-size: 16px; }
         .p-stack { color: var(--primary); font-family: monospace; font-size: 16px; }
         .p-bet { color: var(--accent-gold); font-size: 14px; }
         .dealer-chip { background: var(--accent-gold); color: black; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: inline-flex; justify-content: center; align-items: center; margin-left: 5px; font-weight: bold;}
 
-        /* CONTROL PANEL (Bas de l'écran) */
+        /* CONTROL PANEL (Bas de l'écran - CORRIGÉ) */
         #control-panel {
             background: var(--surface);
             padding: 20px;
+            /* AJOUT IMPORTANT : Espace en bas pour éviter la barre système */
+            padding-bottom: max(20px, env(safe-area-inset-bottom) + 15px); 
             border-radius: 20px 20px 0 0;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            flex-shrink: 0; /* Empêche le panneau de s'écraser */
+            z-index: 10;
         }
 
         .active-player-display {
@@ -119,16 +126,16 @@
         .action-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
         }
         .slider-container {
             grid-column: span 3;
             background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px;
-            display: none; /* Hidden by default, shown for Raise */
+            display: none;
             flex-direction: column; gap: 5px;
         }
 
-        /* WINNER MODAL */
+        /* MODAL */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 100;
@@ -193,8 +200,8 @@
                     <span>Relancer à : <span id="raise-val-display" style="color: var(--accent-gold); font-weight: bold;">0</span></span>
                     <button style="background:none; border:none; color: #666;" onclick="cancelRaise()">X</button>
                 </div>
-                <input type="range" id="raise-slider" style="width: 100%; accent-color: var(--accent-gold);">
-                <button class="btn btn-gold" onclick="confirmRaise()">Valider Relance</button>
+                <input type="range" id="raise-slider" style="width: 100%; accent-color: var(--accent-gold); height: 40px;">
+                <button class="btn btn-gold" onclick="confirmRaise()" style="margin-top:10px;">Valider Relance</button>
             </div>
 
             <div class="action-grid" id="main-actions">
@@ -209,119 +216,81 @@
         <div class="modal-content">
             <h3>Fin de la main</h3>
             <p>Qui a la meilleure main ?</p>
-            <div id="winner-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-                </div>
+            <div id="winner-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;"></div>
             <button class="btn btn-dark" style="margin-top: 15px;" onclick="closeWinnerModal()">Annuler</button>
         </div>
     </div>
 
     <script>
-        // --- LOGIC ENGINE ---
-        
         let config = { startStack: 1000, sb: 10, bb: 20 };
         let players = []; 
         let gameState = {
             dealerIdx: 0,
             activePlayerIdx: 0,
             pot: 0,
-            currentStage: 0, // 0:Pre, 1:Flop, 2:Turn, 3:River
-            communityCards: 0, // Juste visuel
-            highestBet: 0, // La mise la plus haute de la phase actuelle
-            stageBets: {}, // Map playerIdx -> mise dans la phase actuelle
+            currentStage: 0,
+            highestBet: 0, 
+            stageBets: {},
             isHandActive: false
         };
-
-        // --- SETUP FUNCTIONS ---
 
         function addPlayer() {
             const input = document.getElementById('new-player-name');
             const name = input.value.trim();
             if(!name) return;
-            
-            players.push({
-                id: Date.now(),
-                name: name,
-                stack: parseInt(document.getElementById('setup-stack').value),
-                status: 'active', // active, folded, allin
-                totalBetInHand: 0 // Pour gestion pot split (simplifié)
-            });
+            players.push({ id: Date.now(), name: name, stack: parseInt(document.getElementById('setup-stack').value), status: 'active', totalBetInHand: 0 });
             input.value = '';
             renderSetupList();
         }
 
         function renderSetupList() {
             const list = document.getElementById('setup-list');
-            list.innerHTML = players.map(p => 
-                `<div class="setup-item"><span>${p.name}</span> <small>${p.stack}$</small></div>`
-            ).join('');
+            list.innerHTML = players.map(p => `<div class="setup-item"><span>${p.name}</span> <small>${p.stack}$</small></div>`).join('');
         }
 
         function startGame() {
             if(players.length < 2) return alert("Min 2 joueurs");
             config.startStack = parseInt(document.getElementById('setup-stack').value);
             config.sb = parseInt(document.getElementById('setup-sb').value);
-            config.bb = config.sb * 2; // Force BB = 2*SB pour simplicité
-            
+            config.bb = config.sb * 2;
             document.getElementById('info-blinds').innerText = `${config.sb}/${config.bb}`;
-            
             document.getElementById('setup-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
-            
             startNewHand();
         }
 
-        // --- CORE GAME LOOP ---
-
         function startNewHand() {
-            // Reset players status (sauf si bust)
             players.forEach(p => {
                 if(p.stack > 0) p.status = 'active';
                 else p.status = 'out';
                 p.totalBetInHand = 0;
             });
-
-            // Bouger le dealer
-            // Note: Première main, dealerIdx est 0. Ensuite on incrémente.
-            if(gameState.isHandActive) { // Si ce n'est pas la toute première
-                 gameState.dealerIdx = getNextActivePlayer(gameState.dealerIdx);
-            }
-
+            if(gameState.isHandActive) gameState.dealerIdx = getNextActivePlayer(gameState.dealerIdx);
             gameState.pot = 0;
-            gameState.currentStage = 0; // Pre-Flop
+            gameState.currentStage = 0;
             gameState.stageBets = {};
             gameState.isHandActive = true;
             
-            // Gestion Blindes
             let sbIdx = getNextActivePlayer(gameState.dealerIdx);
             let bbIdx = getNextActivePlayer(sbIdx);
-            
-            // Reset bets map
             players.forEach((_, i) => gameState.stageBets[i] = 0);
 
-            // Auto-post Blinds
             placeBet(sbIdx, Math.min(players[sbIdx].stack, config.sb));
             placeBet(bbIdx, Math.min(players[bbIdx].stack, config.bb));
 
             gameState.highestBet = config.bb;
-
-            // Le tour commence après la BB
             gameState.activePlayerIdx = getNextActivePlayer(bbIdx);
-
             updateUI();
         }
 
         function placeBet(playerIdx, amount) {
-            // amount est la somme AJOUTÉE
             const p = players[playerIdx];
             p.stack -= amount;
             p.totalBetInHand += amount;
             gameState.pot += amount;
             gameState.stageBets[playerIdx] += amount;
-
             if (p.stack === 0) p.status = 'allin';
         }
-
-        // --- TURN MANAGEMENT ---
 
         function getNextActivePlayer(currentIdx) {
             let next = (currentIdx + 1) % players.length;
@@ -329,37 +298,16 @@
             while (players[next].status === 'out' || players[next].status === 'folded' || players[next].status === 'allin') {
                 next = (next + 1) % players.length;
                 count++;
-                if(count > players.length) return null; // Should not happen
+                if(count > players.length) return null;
             }
             return next;
         }
 
         function checkRoundComplete() {
-            // Le tour est fini si :
-            // 1. Tous les joueurs actifs (non fold, non allin) ont misé == highestBet
-            // 2. ET tout le monde a parlé au moins une fois (gestion Check BB)
-            
             const activePlayers = players.filter(p => p.status === 'active');
-            
-            // Si 1 seul joueur reste (tout le monde fold)
             const remaining = players.filter(p => p.status !== 'folded' && p.status !== 'out');
-            if (remaining.length === 1) {
-                endHandWinner(remaining[0]);
-                return true;
-            }
-
-            // Vérification égalité des mises
-            const betsBalanced = activePlayers.every(p => {
-                const myBet = gameState.stageBets[players.indexOf(p)] || 0;
-                return myBet === gameState.highestBet;
-            });
-
-            // Pour savoir si tout le monde a parlé, on compare l'index actif.
-            // Simplification: si betsBalanced est vrai ET que ce n'est pas un scénario 
-            // où BB peut encore check pre-flop. 
-            // On gère ça via l'UI : si Call = 0 et qu'on clique Check, on passe.
-
-            return betsBalanced;
+            if (remaining.length === 1) { endHandWinner(remaining[0]); return true; }
+            return activePlayers.every(p => (gameState.stageBets[players.indexOf(p)] || 0) === gameState.highestBet);
         }
 
         function playerAction(action) {
@@ -368,124 +316,67 @@
             const currentBet = gameState.stageBets[pIdx];
             const toCall = gameState.highestBet - currentBet;
 
-            if (action === 'fold') {
-                p.status = 'folded';
-            } 
-            else if (action === 'check_call') {
-                // Call amount or All-in if stack too low
-                const amount = Math.min(p.stack, toCall);
-                placeBet(pIdx, amount);
-            }
-            // Raise est géré séparément
-
-            // Après action, vérifier si tour fini
-            // Cas spécial BB Preflop : si c'est la BB, que la mise est égale et qu'il check, le tour est fini.
+            if (action === 'fold') p.status = 'folded';
+            else if (action === 'check_call') placeBet(pIdx, Math.min(p.stack, toCall));
             
             if (checkRoundComplete() && (gameState.currentStage > 0 || (gameState.currentStage === 0 && gameState.highestBet === config.bb && action === 'check_call' && currentBet + toCall === config.bb))) {
-                 // Fin de la phase de mise
                  prepareNextStage();
             } else if (checkRoundComplete() && gameState.highestBet > config.bb) {
-                 // Cas où tout le monde a call une relance
                  prepareNextStage();
             } else {
-                // Joueur suivant
-                let next = getNextActivePlayer(pIdx);
-                // Si on revient à un joueur qui a déjà mis la mise max, et que personne n'a relancé au dessus...
-                // C'est la complexité du poker. 
-                // APPROCHE SIMPLIFIÉE :
-                // Si `betsBalanced` est TRUE, on arrête le tour.
-                // Sinon on passe au suivant.
-                
-                if (checkRoundComplete()) {
-                    prepareNextStage();
-                } else {
-                    gameState.activePlayerIdx = next;
-                }
+                if (checkRoundComplete()) prepareNextStage();
+                else gameState.activePlayerIdx = getNextActivePlayer(pIdx);
             }
             updateUI();
         }
         
-        // --- LOGIQUE RELANCE ---
         function showRaiseUI() {
             const p = players[gameState.activePlayerIdx];
             const currentBet = gameState.stageBets[gameState.activePlayerIdx];
-            // Min raise : double la dernière mise ou au moins BB
             let minRaiseTotal = gameState.highestBet * 2;
             if(gameState.highestBet === 0) minRaiseTotal = config.bb;
-            if (minRaiseTotal > p.stack + currentBet) minRaiseTotal = p.stack + currentBet; // All in
-
-            const max = p.stack + currentBet;
+            if (minRaiseTotal > p.stack + currentBet) minRaiseTotal = p.stack + currentBet;
 
             document.getElementById('main-actions').style.display = 'none';
             document.getElementById('raise-ui').style.display = 'flex';
             
             const slider = document.getElementById('raise-slider');
             slider.min = minRaiseTotal;
-            slider.max = max;
+            slider.max = p.stack + currentBet;
             slider.value = minRaiseTotal;
-            
             updateRaiseDisplay(minRaiseTotal);
-            
             slider.oninput = (e) => updateRaiseDisplay(e.target.value);
         }
 
-        function updateRaiseDisplay(val) {
-            document.getElementById('raise-val-display').innerText = val;
-        }
-
-        function cancelRaise() {
-            document.getElementById('raise-ui').style.display = 'none';
-            document.getElementById('main-actions').style.display = 'grid';
-        }
-
+        function updateRaiseDisplay(val) { document.getElementById('raise-val-display').innerText = val; }
+        function cancelRaise() { document.getElementById('raise-ui').style.display = 'none'; document.getElementById('main-actions').style.display = 'grid'; }
+        
         function confirmRaise() {
             const val = parseInt(document.getElementById('raise-slider').value);
             const pIdx = gameState.activePlayerIdx;
-            const currentBet = gameState.stageBets[pIdx];
-            const added = val - currentBet;
-            
+            const added = val - gameState.stageBets[pIdx];
             placeBet(pIdx, added);
-            gameState.highestBet = val; // Nouvelle référence
-            
+            gameState.highestBet = val;
             cancelRaise();
-            
-            // Reset "Round Complete" logic: tout le monde doit recaller
             gameState.activePlayerIdx = getNextActivePlayer(pIdx);
             updateUI();
         }
 
-        // --- STAGE MANAGEMENT ---
-
-        function prepareNextStage() {
-            // Fin de tour d'enchère
-            gameState.activePlayerIdx = -1; // Personne ne joue, en attente
-            updateUI(); // Affiche bouton "Next Stage"
-        }
+        function prepareNextStage() { gameState.activePlayerIdx = -1; updateUI(); }
 
         function nextStage() {
             gameState.currentStage++;
-            
-            // Reset des mises pour le nouveau tour
             players.forEach((_, i) => gameState.stageBets[i] = 0);
             gameState.highestBet = 0;
-            
-            // Le premier à parler est le premier actif après le dealer
             gameState.activePlayerIdx = getNextActivePlayer(gameState.dealerIdx);
-            
-            if (gameState.currentStage > 3) {
-                // Showdown
-                showWinnerSelection();
-            } else {
-                updateUI();
-            }
+            if (gameState.currentStage > 3) showWinnerSelection();
+            else updateUI();
         }
 
         function showWinnerSelection() {
             const modal = document.getElementById('winner-modal');
             const list = document.getElementById('winner-list');
             list.innerHTML = '';
-            
-            // Seuls ceux pas folded peuvent gagner
             players.forEach((p, i) => {
                 if (p.status !== 'folded' && p.status !== 'out') {
                     const btn = document.createElement('button');
@@ -499,9 +390,7 @@
             modal.style.display = 'flex';
         }
         
-        function closeWinnerModal() {
-             document.getElementById('winner-modal').style.display = 'none';
-        }
+        function closeWinnerModal() { document.getElementById('winner-modal').style.display = 'none'; }
 
         function endHandWinner(winner) {
             winner.stack += gameState.pot;
@@ -510,74 +399,37 @@
             startNewHand();
         }
 
-        // --- UI RENDER ---
-
         function updateUI() {
-            // Header
             document.getElementById('main-pot').innerText = gameState.pot;
             const stages = ["Pré-Flop", "Flop", "Turn", "River"];
             document.getElementById('info-stage').innerText = stages[gameState.currentStage] || "Fin";
 
-            // Table List
             const table = document.getElementById('table-view');
             table.innerHTML = '';
-            
             players.forEach((p, i) => {
                 const row = document.createElement('div');
                 let rowClass = 'player-row';
                 if (i === gameState.activePlayerIdx) rowClass += ' active-turn';
-                if (p.status === 'folded') rowClass += ' folded';
-                if (p.status === 'out') rowClass += ' folded'; // same visual
-
-                const currentBet = gameState.stageBets[i] || 0;
-                
+                if (p.status === 'folded' || p.status === 'out') rowClass += ' folded';
                 row.className = rowClass;
-                row.innerHTML = `
-                    <div>
-                        <div class="p-name">
-                            ${p.name} 
-                            ${i === gameState.dealerIdx ? '<span class="dealer-chip">D</span>' : ''}
-                            ${p.status === 'allin' ? '<span style="color:red; font-size:10px; border:1px solid red; padding:2px;">ALL-IN</span>' : ''}
-                        </div>
-                        <div class="p-stack">${p.stack}$</div>
-                    </div>
-                    <div class="p-bet">
-                        ${currentBet > 0 ? currentBet + '$' : (p.status==='active'?'':'')}
-                    </div>
-                `;
+                row.innerHTML = `<div><div class="p-name">${p.name} ${i === gameState.dealerIdx ? '<span class="dealer-chip">D</span>' : ''} ${p.status === 'allin' ? '<span style="color:red; font-size:10px;">ALL-IN</span>' : ''}</div><div class="p-stack">${p.stack}$</div></div><div class="p-bet">${gameState.stageBets[i] > 0 ? gameState.stageBets[i] + '$' : ''}</div>`;
                 table.appendChild(row);
             });
 
-            // Controls
             const controls = document.getElementById('control-panel');
             const nextBtn = document.getElementById('next-stage-btn');
-
             if (gameState.activePlayerIdx === -1) {
-                // Waiting for next card
                 controls.style.display = 'none';
                 nextBtn.style.display = 'block';
             } else {
                 controls.style.display = 'block';
                 nextBtn.style.display = 'none';
-                
-                const activeP = players[gameState.activePlayerIdx];
-                document.getElementById('active-player-name').innerText = activeP.name;
-
-                const currentBet = gameState.stageBets[gameState.activePlayerIdx];
-                const toCall = gameState.highestBet - currentBet;
-                
+                document.getElementById('active-player-name').innerText = players[gameState.activePlayerIdx].name;
+                const toCall = gameState.highestBet - gameState.stageBets[gameState.activePlayerIdx];
                 const btnCall = document.getElementById('btn-check-call');
-                
-                if (toCall === 0) {
-                    btnCall.innerText = "Check";
-                    btnCall.className = "btn btn-green";
-                } else {
-                    btnCall.innerText = `Suivre (${toCall}$)`;
-                    btnCall.className = "btn btn-green"; // Ou couleur d'alerte
-                }
+                btnCall.innerText = toCall === 0 ? "Check" : `Suivre (${toCall}$)`;
             }
         }
-
     </script>
 </body>
 </html>
